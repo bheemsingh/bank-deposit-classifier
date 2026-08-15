@@ -202,47 +202,47 @@ with tab_predict:
 
     df_ref = get_data()
 
-    with st.form("customer_form"):
-        left, right = st.columns(2)
-
-        with left:
-            age = st.slider("Age", 18, 95, 40)
-            job = st.selectbox("Job", sorted(df_ref["job"].unique()))
-            marital = st.selectbox("Marital status", sorted(df_ref["marital"].unique()))
-            education = st.selectbox("Education", sorted(df_ref["education"].unique()))
-            default = st.selectbox("Has credit in default?", sorted(df_ref["default"].unique()))
-            balance = st.number_input("Account balance (EUR)", value=1000, step=100)
-            housing = st.selectbox("Has housing loan?", sorted(df_ref["housing"].unique()))
-            loan = st.selectbox("Has personal loan?", sorted(df_ref["loan"].unique()))
-
-        with right:
-            contact = st.selectbox("Contact type", sorted(df_ref["contact"].unique()))
-            day = st.slider("Day of month contacted", 1, 31, 15)
-            month = st.selectbox("Month contacted", sorted(df_ref["month"].unique()))
-            duration = st.slider("Last call duration (seconds)", 0, 3000, 180)
-            campaign = st.slider("Contacts during this campaign", 1, 50, 2)
-            pdays = st.number_input("Days since last contact (-1 = never)", value=-1, step=1)
-            previous = st.slider("Previous contacts before this campaign", 0, 50, 0)
-            poutcome = st.selectbox("Previous campaign outcome", sorted(df_ref["poutcome"].unique()))
-
-        submitted = st.form_submit_button("Predict")
-
-    if submitted:
-        raw_row = pd.DataFrame([{
-            "age": age, "job": job, "marital": marital, "education": education,
-            "default": default, "balance": balance, "housing": housing, "loan": loan,
-            "contact": contact, "day": day, "month": month, "duration": duration,
-            "campaign": campaign, "pdays": pdays, "previous": previous,
-            "poutcome": poutcome, "deposit": "no",  # placeholder, unused for inference
-        }])
-
-        preds, probs = predict(model_key, raw_row)
-        pred, prob = preds[0], probs[0]
-
-        if pred == 1:
-            st.success(f"Prediction: **Subscribes** (probability {prob:.1%})")
-        else:
-            st.warning(f"Prediction: **Does not subscribe** (probability of yes: {prob:.1%})")
+    # with st.form("customer_form"):
+    #     left, right = st.columns(2)
+    #
+    #     with left:
+    #         age = st.slider("Age", 18, 95, 40)
+    #         job = st.selectbox("Job", sorted(df_ref["job"].unique()))
+    #         marital = st.selectbox("Marital status", sorted(df_ref["marital"].unique()))
+    #         education = st.selectbox("Education", sorted(df_ref["education"].unique()))
+    #         default = st.selectbox("Has credit in default?", sorted(df_ref["default"].unique()))
+    #         balance = st.number_input("Account balance (EUR)", value=1000, step=100)
+    #         housing = st.selectbox("Has housing loan?", sorted(df_ref["housing"].unique()))
+    #         loan = st.selectbox("Has personal loan?", sorted(df_ref["loan"].unique()))
+    #
+    #     with right:
+    #         contact = st.selectbox("Contact type", sorted(df_ref["contact"].unique()))
+    #         day = st.slider("Day of month contacted", 1, 31, 15)
+    #         month = st.selectbox("Month contacted", sorted(df_ref["month"].unique()))
+    #         duration = st.slider("Last call duration (seconds)", 0, 3000, 180)
+    #         campaign = st.slider("Contacts during this campaign", 1, 50, 2)
+    #         pdays = st.number_input("Days since last contact (-1 = never)", value=-1, step=1)
+    #         previous = st.slider("Previous contacts before this campaign", 0, 50, 0)
+    #         poutcome = st.selectbox("Previous campaign outcome", sorted(df_ref["poutcome"].unique()))
+    #
+    #     submitted = st.form_submit_button("Predict")
+    #
+    # if submitted:
+    #     raw_row = pd.DataFrame([{
+    #         "age": age, "job": job, "marital": marital, "education": education,
+    #         "default": default, "balance": balance, "housing": housing, "loan": loan,
+    #         "contact": contact, "day": day, "month": month, "duration": duration,
+    #         "campaign": campaign, "pdays": pdays, "previous": previous,
+    #         "poutcome": poutcome, "deposit": "no",  # placeholder, unused for inference
+    #     }])
+    #
+    #     preds, probs = predict(model_key, raw_row)
+    #     pred, prob = preds[0], probs[0]
+    #
+    #     if pred == 1:
+    #         st.success(f"Prediction: **Subscribes** (probability {prob:.1%})")
+    #     else:
+    #         st.warning(f"Prediction: **Does not subscribe** (probability of yes: {prob:.1%})")
 
     st.divider()
     st.subheader("Or batch-predict from a CSV")
