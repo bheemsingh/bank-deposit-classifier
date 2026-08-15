@@ -244,8 +244,8 @@ with tab_predict:
     #     else:
     #         st.warning(f"Prediction: **Does not subscribe** (probability of yes: {prob:.1%})")
 
-    st.divider()
-    st.subheader("Or batch-predict from a CSV")
+    #st.divider()
+    st.subheader("Dataset upload from a CSV")
     st.caption(
         f"Upload a CSV of raw customer rows (same columns as `data/bank.csv` / "
         f"`test_data.csv` — a `deposit` column, if present, is ignored). Capped at "
