@@ -36,7 +36,7 @@ instances** (over the 500-instance minimum).
 
 ## c. GitHub Repository Link
 
-https://github.com/bheemsingh/bank-deposit-classifier.git
+<-- fill in your GitHub repo URL here after pushing -->
 
 ## d. Models used
 
