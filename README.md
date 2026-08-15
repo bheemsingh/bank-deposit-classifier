@@ -84,6 +84,13 @@ split, `random_state=42`; 2,233 held-out test rows.)*
 pip install -r requirements.txt
 python train_models.py     # trains all 6 models, writes model/*.pkl + model/metrics.json + test_data.csv
 streamlit run app.py       # launches the interactive app
+Go to https://streamlit.io/cloud
+Sign in using GitHub account
+Click Create App
+Select Git repository
+Choose branch (main)
+Select app.py
+Click Deploy
 ```
 
 ## Repository structure
