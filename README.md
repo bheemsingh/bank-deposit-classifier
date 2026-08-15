@@ -36,7 +36,7 @@ instances** (over the 500-instance minimum).
 
 ## c. GitHub Repository Link
 
-`<-- fill in your GitHub repo URL here after pushing -->`
+`https://github.com/bheemsingh/bank-deposit-classifier.git
 
 ## d. Models used
 
@@ -84,6 +84,13 @@ split, `random_state=42`; 2,233 held-out test rows.)*
 pip install -r requirements.txt
 python train_models.py     # trains all 6 models, writes model/*.pkl + model/metrics.json + test_data.csv
 streamlit run app.py       # launches the interactive app
+Go to https://streamlit.io/cloud
+Sign in using GitHub account
+Create app
+Select My repository
+Choose branch ( main)
+Select app.py
+Click Deploy
 ```
 
 ## Repository structure
