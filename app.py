@@ -268,7 +268,7 @@ with tab_predict:
 
     df_ref = get_data()
 
-    st.subheader("Upload Dataset to predict from a CSV")
+    st.subheader("Upload Dataset from a CSV")
     st.caption(
         f"Upload a CSV of raw customer rows (same columns as `data/bank.csv` / "
         f"`test_data.csv` — a `deposit` column, if present, is ignored). Capped at "
