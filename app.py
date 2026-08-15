@@ -14,6 +14,7 @@ import os
 
 import joblib
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
@@ -26,8 +27,11 @@ from preprocessing import (
     load_and_engineer,
 )
 
+RAW_INPUT_COLUMNS = RAW_CATEGORICAL_COLUMNS + RAW_NUMERIC_COLUMNS
+
 MODEL_DIR = "model"
 DATA_PATH = os.path.join("data", "bank.csv")
+MAX_UPLOAD_ROWS = 2233  # size of test_data.csv; keeps inference light on Streamlit free tier
 
 st.set_page_config(page_title="Term Deposit Subscription Predictor", layout="wide")
 
@@ -51,6 +55,19 @@ def get_preprocessor():
 @st.cache_resource
 def get_model(model_key: str):
     return joblib.load(os.path.join(MODEL_DIR, f"{model_key}.pkl"))
+
+
+def predict(model_key: str, raw_df: pd.DataFrame):
+    """Engineer features, preprocess, and run predict/predict_proba for a batch of raw rows."""
+    engineered = engineer_features(raw_df)
+    X = engineered[feature_columns()]
+
+    X_t = get_preprocessor().transform(X)
+    if hasattr(X_t, "todense"):
+        X_t = X_t.todense()
+
+    model = get_model(model_key)
+    return model.predict(X_t), model.predict_proba(X_t)[:, 1]
 
 
 st.title("Will this customer subscribe to a term deposit?")
@@ -217,20 +234,55 @@ with tab_predict:
             "poutcome": poutcome, "deposit": "no",  # placeholder, unused for inference
         }])
 
-        engineered = engineer_features(raw_row)
-        X = engineered[feature_columns()]
-
-        preprocessor = get_preprocessor()
-        model = get_model(model_key)
-
-        X_t = preprocessor.transform(X)
-        if hasattr(X_t, "todense"):
-            X_t = X_t.todense()
-
-        pred = model.predict(X_t)[0]
-        prob = model.predict_proba(X_t)[0, 1]
+        preds, probs = predict(model_key, raw_row)
+        pred, prob = preds[0], probs[0]
 
         if pred == 1:
             st.success(f"Prediction: **Subscribes** (probability {prob:.1%})")
         else:
             st.warning(f"Prediction: **Does not subscribe** (probability of yes: {prob:.1%})")
+
+    st.divider()
+    st.subheader("Or batch-predict from a CSV")
+    st.caption(
+        f"Upload a CSV of raw customer rows (same columns as `data/bank.csv` / "
+        f"`test_data.csv` — a `deposit` column, if present, is ignored). Capped at "
+        f"{MAX_UPLOAD_ROWS} rows to keep inference light on Streamlit's free tier."
+    )
+
+    uploaded_file = st.file_uploader("Upload CSV", type=["csv"], key="batch_predict_csv")
+
+    if uploaded_file is not None:
+        try:
+            upload_df = pd.read_csv(uploaded_file)
+        except Exception as e:
+            st.error(f"Could not read that file as CSV: {e}")
+            st.stop()
+
+        missing_cols = [c for c in RAW_INPUT_COLUMNS if c not in upload_df.columns]
+        if missing_cols:
+            st.error(f"Missing required column(s): {', '.join(missing_cols)}")
+            st.stop()
+
+        if len(upload_df) > MAX_UPLOAD_ROWS:
+            st.warning(
+                f"File has {len(upload_df)} rows; only the first {MAX_UPLOAD_ROWS} "
+                "will be scored."
+            )
+            upload_df = upload_df.head(MAX_UPLOAD_ROWS)
+
+        preds, probs = predict(model_key, upload_df)
+
+        results = upload_df.copy()
+        results["predicted_deposit"] = np.where(preds == 1, "yes", "no")
+        results["subscribe_probability"] = probs
+
+        st.success(f"Scored {len(results)} rows with {get_metrics()[model_key]['display_name']}.")
+        st.dataframe(results)
+
+        st.download_button(
+            "Download predictions as CSV",
+            data=results.to_csv(index=False).encode("utf-8"),
+            file_name="predictions.csv",
+            mime="text/csv",
+        )
