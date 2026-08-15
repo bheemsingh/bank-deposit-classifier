@@ -11,6 +11,7 @@ Data & models are produced by train_models.py (run that first).
 
 import json
 import os
+import re
 
 import joblib
 import matplotlib.pyplot as plt
@@ -33,6 +34,7 @@ RAW_INPUT_COLUMNS = RAW_CATEGORICAL_COLUMNS + RAW_NUMERIC_COLUMNS
 
 MODEL_DIR = "model"
 DATA_PATH = os.path.join("data", "bank.csv")
+README_PATH = "README.md"
 MAX_UPLOAD_ROWS = 2233  # size of test_data.csv; keeps inference light on Streamlit free tier
 
 st.set_page_config(page_title="Term Deposit Subscription Predictor", layout="wide")
@@ -47,6 +49,36 @@ def get_data():
 def get_metrics():
     with open(os.path.join(MODEL_DIR, "metrics.json")) as f:
         return json.load(f)
+
+
+@st.cache_data
+def get_observations():
+    """Parse the '### Observations' markdown table out of README.md into
+    {display_name: observation_text}, plus the overall-winner text."""
+    with open(README_PATH, encoding="utf-8") as f:
+        content = f.read()
+
+    section = re.search(r"### Observations\n(.*?)(?:\n##|\Z)", content, re.S)
+    if not section:
+        return {}, None
+
+    rows = [
+        line for line in section.group(1).strip().splitlines()
+        if line.strip().startswith("|") and not re.fullmatch(r"[\s|:-]+", line.strip())
+    ][1:]  # drop header row, keep data rows
+
+    observations, winner = {}, None
+    for row in rows:
+        cells = [re.sub(r"\*+", "", c).strip() for c in row.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        name, text = cells[0], cells[1]
+        if "overall winner" in name.lower():
+            winner = text
+        else:
+            observations[name] = text
+
+    return observations, winner
 
 
 @st.cache_resource
@@ -70,6 +102,21 @@ def predict(model_key: str, raw_df: pd.DataFrame):
 
     model = get_model(model_key)
     return model.predict(X_t), model.predict_proba(X_t)[:, 1]
+
+
+def compare_models_on(raw_df: pd.DataFrame, y_true: pd.Series) -> pd.DataFrame:
+    """Run every model on raw_df and score each against y_true. Same shape as
+    the training-time table in the Model Comparison tab, but computed live
+    from whatever file was uploaded."""
+    rows = {}
+    for model_key, info in get_metrics().items():
+        preds, probs = predict(model_key, raw_df)
+        m = evaluate(y_true, preds, probs)
+        rows[info["display_name"]] = {
+            "Accuracy": m["accuracy"], "AUC": m["auc"], "Precision": m["precision"],
+            "Recall": m["recall"], "F1": m["f1"], "MCC": m["mcc"],
+        }
+    return pd.DataFrame(rows).T
 
 
 st.title("Will this customer subscribe to a term deposit?")
@@ -158,21 +205,35 @@ with tab_eda:
 # ---------------------------------------------------------- Tab 2: Compare
 with tab_compare:
     st.subheader("Model comparison")
-    metrics = get_metrics()
 
-    table = pd.DataFrame(
-        {
-            m["display_name"]: {
-                "Accuracy": m["accuracy"],
-                "AUC": m["auc"],
-                "Precision": m["precision"],
-                "Recall": m["recall"],
-                "F1": m["f1"],
-                "MCC": m["mcc"],
+    upload_table = st.session_state.get("upload_compare_table")
+
+    if upload_table is not None:
+        table = upload_table
+        st.caption(
+            f"Based on the uploaded file **{st.session_state['upload_compare_filename']}** "
+            "— go to 'Predict a Customer' and upload a different file to refresh this."
+        )
+    else:
+        st.caption(
+            "Upload and predict a labeled CSV on the 'Predict a Customer' tab to see "
+            "a comparison based on that file. Showing the training-time held-out split "
+            "for now."
+        )
+        metrics = get_metrics()
+        table = pd.DataFrame(
+            {
+                m["display_name"]: {
+                    "Accuracy": m["accuracy"],
+                    "AUC": m["auc"],
+                    "Precision": m["precision"],
+                    "Recall": m["recall"],
+                    "F1": m["f1"],
+                    "MCC": m["mcc"],
+                }
+                for m in metrics.values()
             }
-            for m in metrics.values()
-        }
-    ).T
+        ).T
 
     st.dataframe(table.style.format("{:.4f}").background_gradient(cmap="Blues", axis=0))
 
@@ -185,10 +246,15 @@ with tab_compare:
     st.pyplot(fig)
 
     st.markdown("### Observations")
-    st.info(
-        "See README.md 'Observations' table for the written analysis of each "
-        "model's performance on this dataset (filled in from the metrics above)."
-    )
+    st.caption("Analyst write-up from README.md (based on the training-time held-out split).")
+    observations, winner = get_observations()
+    for display_name in table.index:
+        text = observations.get(display_name)
+        if text:
+            with st.expander(display_name):
+                st.markdown(text)
+    if winner:
+        st.success(f"**Overall winner:** {winner}")
 
 # ---------------------------------------------------------- Tab 3: Predict
 with tab_predict:
@@ -202,50 +268,50 @@ with tab_predict:
 
     df_ref = get_data()
 
-    # with st.form("customer_form"):
-    #     left, right = st.columns(2)
-    #
-    #     with left:
-    #         age = st.slider("Age", 18, 95, 40)
-    #         job = st.selectbox("Job", sorted(df_ref["job"].unique()))
-    #         marital = st.selectbox("Marital status", sorted(df_ref["marital"].unique()))
-    #         education = st.selectbox("Education", sorted(df_ref["education"].unique()))
-    #         default = st.selectbox("Has credit in default?", sorted(df_ref["default"].unique()))
-    #         balance = st.number_input("Account balance (EUR)", value=1000, step=100)
-    #         housing = st.selectbox("Has housing loan?", sorted(df_ref["housing"].unique()))
-    #         loan = st.selectbox("Has personal loan?", sorted(df_ref["loan"].unique()))
-    #
-    #     with right:
-    #         contact = st.selectbox("Contact type", sorted(df_ref["contact"].unique()))
-    #         day = st.slider("Day of month contacted", 1, 31, 15)
-    #         month = st.selectbox("Month contacted", sorted(df_ref["month"].unique()))
-    #         duration = st.slider("Last call duration (seconds)", 0, 3000, 180)
-    #         campaign = st.slider("Contacts during this campaign", 1, 50, 2)
-    #         pdays = st.number_input("Days since last contact (-1 = never)", value=-1, step=1)
-    #         previous = st.slider("Previous contacts before this campaign", 0, 50, 0)
-    #         poutcome = st.selectbox("Previous campaign outcome", sorted(df_ref["poutcome"].unique()))
-    #
-    #     submitted = st.form_submit_button("Predict")
-    #
-    # if submitted:
-    #     raw_row = pd.DataFrame([{
-    #         "age": age, "job": job, "marital": marital, "education": education,
-    #         "default": default, "balance": balance, "housing": housing, "loan": loan,
-    #         "contact": contact, "day": day, "month": month, "duration": duration,
-    #         "campaign": campaign, "pdays": pdays, "previous": previous,
-    #         "poutcome": poutcome, "deposit": "no",  # placeholder, unused for inference
-    #     }])
-    #
-    #     preds, probs = predict(model_key, raw_row)
-    #     pred, prob = preds[0], probs[0]
-    #
-    #     if pred == 1:
-    #         st.success(f"Prediction: **Subscribes** (probability {prob:.1%})")
-    #     else:
-    #         st.warning(f"Prediction: **Does not subscribe** (probability of yes: {prob:.1%})")
+    with st.form("customer_form"):
+        left, right = st.columns(2)
 
-    #st.divider()
-    st.subheader("Dataset upload from a CSV")
+        with left:
+            age = st.slider("Age", 18, 95, 40)
+            job = st.selectbox("Job", sorted(df_ref["job"].unique()))
+            marital = st.selectbox("Marital status", sorted(df_ref["marital"].unique()))
+            education = st.selectbox("Education", sorted(df_ref["education"].unique()))
+            default = st.selectbox("Has credit in default?", sorted(df_ref["default"].unique()))
+            balance = st.number_input("Account balance (EUR)", value=1000, step=100)
+            housing = st.selectbox("Has housing loan?", sorted(df_ref["housing"].unique()))
+            loan = st.selectbox("Has personal loan?", sorted(df_ref["loan"].unique()))
+
+        with right:
+            contact = st.selectbox("Contact type", sorted(df_ref["contact"].unique()))
+            day = st.slider("Day of month contacted", 1, 31, 15)
+            month = st.selectbox("Month contacted", sorted(df_ref["month"].unique()))
+            duration = st.slider("Last call duration (seconds)", 0, 3000, 180)
+            campaign = st.slider("Contacts during this campaign", 1, 50, 2)
+            pdays = st.number_input("Days since last contact (-1 = never)", value=-1, step=1)
+            previous = st.slider("Previous contacts before this campaign", 0, 50, 0)
+            poutcome = st.selectbox("Previous campaign outcome", sorted(df_ref["poutcome"].unique()))
+
+        submitted = st.form_submit_button("Predict")
+
+    if submitted:
+        raw_row = pd.DataFrame([{
+            "age": age, "job": job, "marital": marital, "education": education,
+            "default": default, "balance": balance, "housing": housing, "loan": loan,
+            "contact": contact, "day": day, "month": month, "duration": duration,
+            "campaign": campaign, "pdays": pdays, "previous": previous,
+            "poutcome": poutcome, "deposit": "no",  # placeholder, unused for inference
+        }])
+
+        preds, probs = predict(model_key, raw_row)
+        pred, prob = preds[0], probs[0]
+
+        if pred == 1:
+            st.success(f"Prediction: **Subscribes** (probability {prob:.1%})")
+        else:
+            st.warning(f"Prediction: **Does not subscribe** (probability of yes: {prob:.1%})")
+
+    st.divider()
+    st.subheader("Or batch-predict from a CSV")
     st.caption(
         f"Upload a CSV of raw customer rows (same columns as `data/bank.csv` / "
         f"`test_data.csv` — a `deposit` column, if present, is ignored). Capped at "
@@ -317,3 +383,7 @@ with tab_predict:
             ax.set_ylabel("Actual")
             ax.set_title("Confusion matrix")
             st.pyplot(fig)
+
+            st.session_state["upload_compare_table"] = compare_models_on(upload_df, y_true)
+            st.session_state["upload_compare_filename"] = uploaded_file.name
+            st.info("Model comparison for this file is now shown on the 'Model Comparison' tab.")
