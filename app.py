@@ -3,8 +3,8 @@ Streamlit app: Will this customer subscribe to a term deposit?
 
 Three tabs:
   1. Overview & EDA        - dataset description + a handful of narrative charts
-  2. Model Comparison      - the 5-model x 6-metric comparison table + chart
-  3. Predict a Customer    - pick a model, fill in a customer profile, get a live prediction
+  2. Predict a Customer    - pick a model, fill in a customer profile, get a live prediction
+  3. Model Comparison      - the 5-model x 6-metric comparison table + chart
 
 Data & models are produced by train_models.py (run that first).
 """
@@ -125,8 +125,8 @@ st.caption(
     "used here to predict whether a customer subscribes to a term deposit."
 )
 
-tab_eda, tab_compare, tab_predict = st.tabs(
-    ["Overview & EDA", "Model Comparison", "Predict a Customer"]
+tab_eda, tab_predict, tab_compare = st.tabs(
+    ["Overview & EDA", "Predict a Customer", "Model Comparison"]
 )
 
 # ---------------------------------------------------------------- Tab 1: EDA
@@ -202,7 +202,7 @@ with tab_eda:
     with st.expander("Raw sample rows"):
         st.dataframe(df.head(20))
 
-# ---------------------------------------------------------- Tab 2: Compare
+# ---------------------------------------------------------- Tab 3: Compare
 with tab_compare:
     st.subheader("Model comparison")
 
@@ -256,7 +256,7 @@ with tab_compare:
     if winner:
         st.success(f"**Overall winner:** {winner}")
 
-# ---------------------------------------------------------- Tab 3: Predict
+# ---------------------------------------------------------- Tab 2: Predict
 with tab_predict:
     st.subheader("Predict a customer")
 
@@ -268,7 +268,7 @@ with tab_predict:
 
     df_ref = get_data()
 
-    st.subheader("Upload Dataset- from a CSV")
+    st.subheader("Upload Dataset to predict from a CSV")
     st.caption(
         f"Upload a CSV of raw customer rows (same columns as `data/bank.csv` / "
         f"`test_data.csv` — a `deposit` column, if present, is ignored). Capped at "
