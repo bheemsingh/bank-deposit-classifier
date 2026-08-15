@@ -1,5 +1,5 @@
 """
-Trains all 6 required classification models on the bank term-deposit
+Trains all 5 required classification models on the bank term-deposit
 dataset, evaluates them with the 6 required metrics, and persists:
   - model/<model_name>.pkl   (fitted estimator)
   - model/preprocessor.pkl   (fitted ColumnTransformer, shared by all models)

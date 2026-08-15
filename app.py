@@ -3,7 +3,7 @@ Streamlit app: Will this customer subscribe to a term deposit?
 
 Three tabs:
   1. Overview & EDA        - dataset description + a handful of narrative charts
-  2. Model Comparison      - the 6-model x 6-metric comparison table + chart
+  2. Model Comparison      - the 5-model x 6-metric comparison table + chart
   3. Predict a Customer    - pick a model, fill in a customer profile, get a live prediction
 
 Data & models are produced by train_models.py (run that first).
@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
+from sklearn.metrics import confusion_matrix
 
 from preprocessing import (
     RAW_CATEGORICAL_COLUMNS,
@@ -26,6 +27,7 @@ from preprocessing import (
     feature_columns,
     load_and_engineer,
 )
+from train_models import evaluate
 
 RAW_INPUT_COLUMNS = RAW_CATEGORICAL_COLUMNS + RAW_NUMERIC_COLUMNS
 
@@ -179,7 +181,7 @@ with tab_compare:
     table.plot(kind="bar", ax=ax)
     ax.set_ylabel("Score")
     ax.legend(loc="lower right", ncol=3, fontsize=8)
-    ax.set_title("All 6 metrics across all 6 models")
+    ax.set_title("All 6 metrics across all 5 models")
     st.pyplot(fig)
 
     st.markdown("### Observations")
@@ -286,3 +288,32 @@ with tab_predict:
             file_name="predictions.csv",
             mime="text/csv",
         )
+
+        if "deposit" in upload_df.columns:
+            st.markdown("### Metrics + confusion matrix")
+            st.caption(
+                "The uploaded CSV includes a `deposit` column, so predictions "
+                "can be scored against it."
+            )
+
+            y_true = (upload_df["deposit"].astype(str).str.lower() == "yes").astype(int)
+            batch_metrics = evaluate(y_true, preds, probs)
+
+            m1, m2, m3, m4, m5, m6 = st.columns(6)
+            m1.metric("Accuracy", f"{batch_metrics['accuracy']:.4f}")
+            m2.metric("AUC", f"{batch_metrics['auc']:.4f}")
+            m3.metric("Precision", f"{batch_metrics['precision']:.4f}")
+            m4.metric("Recall", f"{batch_metrics['recall']:.4f}")
+            m5.metric("F1", f"{batch_metrics['f1']:.4f}")
+            m6.metric("MCC", f"{batch_metrics['mcc']:.4f}")
+
+            cm = confusion_matrix(y_true, preds)
+            fig, ax = plt.subplots(figsize=(4, 3.5))
+            sns.heatmap(
+                cm, annot=True, fmt="d", cmap="Blues", cbar=False,
+                xticklabels=["no", "yes"], yticklabels=["no", "yes"], ax=ax,
+            )
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("Actual")
+            ax.set_title("Confusion matrix")
+            st.pyplot(fig)
