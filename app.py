@@ -331,7 +331,7 @@ with tab_predict:
             m6.metric("MCC", f"{batch_metrics['mcc']:.4f}")
 
             cm = confusion_matrix(y_true, preds)
-            fig, ax = plt.subplots(figsize=(2, 1.5))
+            fig, ax = plt.subplots(figsize=(6, 4))
             sns.heatmap(
                 cm, annot=True, fmt="d", cmap="Blues", cbar=False,
                 xticklabels=["no", "yes"], yticklabels=["no", "yes"], ax=ax,
