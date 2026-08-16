@@ -53,33 +53,52 @@ def get_metrics():
 
 @st.cache_data
 def get_observations():
-    """Parse the '### Observations' markdown table out of README.md into
-    {display_name: observation_text}, plus the overall-winner text."""
+    """Parse the '### Observations' markdown table from README.md."""
     with open(README_PATH, encoding="utf-8") as f:
         content = f.read()
 
-    section = re.search(r"### Observations\n(.*?)(?:\n##|\Z)", content, re.S)
+    section = re.search(
+        r"### Observations\s*\r?\n(.*?)(?:\r?\n##|\Z)",
+        content,
+        re.S,
+    )
+
     if not section:
         return {}, None
 
     rows = [
-        line for line in section.group(1).strip().splitlines()
-        if line.strip().startswith("|") and not re.fullmatch(r"[\s|:-]+", line.strip())
-    ][1:]  # drop header row, keep data rows
+        line
+        for line in section.group(1).strip().splitlines()
+        if line.strip().startswith("|")
+        and not re.fullmatch(r"[\s|:-]+", line.strip())
+    ]
 
-    observations, winner = {}, None
+    if not rows:
+        return {}, None
+
+    # Drop header row
+    rows = rows[1:]
+
+    observations = {}
+    winner = None
+
     for row in rows:
-        cells = [re.sub(r"\*+", "", c).strip() for c in row.strip().strip("|").split("|")]
+        cells = [
+            re.sub(r"\*+", "", c).strip()
+            for c in row.strip().strip("|").split("|")
+        ]
+
         if len(cells) < 2:
             continue
+
         name, text = cells[0], cells[1]
+
         if "overall winner" in name.lower():
             winner = text
         else:
             observations[name] = text
 
     return observations, winner
-
 
 @st.cache_resource
 def get_preprocessor():
