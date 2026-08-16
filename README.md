@@ -67,7 +67,7 @@ split, `random_state=42`; 2,233 held-out test rows.)*
 | Naive Bayes | 0.7116 | 0.7991 | 0.7760 | 0.5501 | 0.6438 | 0.4304 |
 | Random Forest (Ensemble) | 0.8527 | 0.9167 | 0.8217 | 0.8800 | 0.8498 | 0.7072 |
 
-### f. Observations
+### Observations
 
 | ML Model Name | Observation about model performance |
 |---|---|
@@ -78,7 +78,7 @@ split, `random_state=42`; 2,233 held-out test rows.)*
 | Random Forest (Ensemble) | Best model on every single metric. Bagging many deep-ish trees over random feature subsets captures the nonlinear interactions Logistic Regression misses while averaging away the overfitting/instability that hurts the single Decision Tree, giving both the highest AUC (0.916) and by far the best recall/MCC (0.881 / 0.708) — i.e. it catches the most true subscribers while keeping false positives in check. |
 | **Overall Winner for your dataset?** | **Random Forest (Ensemble)** — highest score on all 6 metrics, making it the clear choice for this dataset. |
 
-## g. How to run
+## How to run
 
 ```bash
 pip install -r requirements.txt
@@ -93,10 +93,10 @@ Select app.py
 Click Deploy
 ```
 
-## h. Streamlit Application Link
+## Streamlit Application Link
 https://2025ac05087-ml-assignment-2-cllassifier-djidjgclcww4gxbpmft6lx.streamlit.app/
 
-## i. Repository structure
+## Repository structure
 
 ```
 bank-deposit-classifier/
